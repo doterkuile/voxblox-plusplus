@@ -1,0 +1,52 @@
+segment_point_cloud_topic: "/depth_segmentation_node/object_segment"
+segmet_point_cloud_queue_size: 60000
+world_frame_id: "map"
+use_label_propagation: true
+
+voxblox:
+  voxel_size: 0.002
+  voxels_per_side: 16
+  truncation_distance_factor: 5.0
+  voxel_carving_enabled: true
+  min_ray_length_m: 0.1
+  max_ray_length_m: 0.5
+  method: "simple"  # Should increase the quality for smaller voxels
+
+
+gsm:
+  min_label_voxel_count: 20
+  label_propagation_td_factor: 1.0
+
+pairwise_confidence_merging:
+  enable_pairwise_confidence_merging: true
+  merging_min_overlap_ratio: 0.01
+  merging_min_frame_count: 2
+
+semantic_instance_segmentation:
+  enable_semantic_instance_segmentation: true
+  class_tsdk: "coco80"
+
+publishers:
+  publish_scene_map: false
+  publish_scene_mesh: true
+  publish_object_bbox: false
+
+meshing:
+  visualize: false
+  update_mesh_every_n_sec: 0.1
+  publish_scene_mesh: true
+  mesh_filename: "teapot_3.ply"
+  visualizer_parameters:
+    camera_position: [-0.73071,  1.35896,   6.98444,  # Position - x y z
+                       0.204536, 0.470912,  0.381721, # Focal point - x y z
+                      -0.945969, 0.275475, -0.171043] # View up - x y z
+    clip_distances: [5.87024, 8.29843]
+
+icp:
+  enable_icp: false
+  keep_track_of_icp_correction: true
+
+debug:
+  verbose_log: true
+  multiple_visualizers: false
+  save_visualizer_frames: false

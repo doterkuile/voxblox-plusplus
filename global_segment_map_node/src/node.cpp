@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
   ros::AsyncSpinner spinner(0);
   spinner.start();
   ros::waitForShutdown();
+  controller->saveMesh();
 
   LOG(INFO) << "Shutting down.";
   return 0;

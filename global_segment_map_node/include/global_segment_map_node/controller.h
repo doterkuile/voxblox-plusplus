@@ -13,6 +13,7 @@
 #include <global_segment_map/meshing/label_tsdf_mesh_integrator.h>
 #include <global_segment_map/utils/visualizer.h>
 #include <ros/ros.h>
+#include <ros/callback_queue.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
@@ -24,6 +25,7 @@
 #include <vpp_msgs/GetListSemanticInstances.h>
 #include <vpp_msgs/GetMap.h>
 #include <vpp_msgs/GetScenePointcloud.h>
+
 
 namespace voxblox {
 namespace voxblox_gsm {
@@ -70,6 +72,8 @@ class Controller {
 
   void advertiseGetAlignedInstanceBoundingBoxService(
       ros::ServiceServer* get_instance_bounding_box_srv);
+
+  void saveMesh();
 
   bool enable_semantic_instance_segmentation_;
 

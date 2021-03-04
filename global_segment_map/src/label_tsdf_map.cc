@@ -12,6 +12,7 @@ Labels LabelTsdfMap::getLabelList() {
       count_unused_labels++;
     }
   }
+  LOG(INFO) << "number of lables: " << labels.size();
   LOG(ERROR) << "Unused labels count: " << count_unused_labels;
   return labels;
 }

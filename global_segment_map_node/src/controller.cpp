@@ -315,9 +315,24 @@ Controller::Controller(ros::NodeHandle* node_handle_private)
         ros::Duration(update_mesh_every_n_sec), &Controller::updateMeshEvent,
         this);
   }
-
+  LOG(INFO) << "Meshing filename before: " << mesh_filename_;
   node_handle_private_->param<std::string>("meshing/mesh_filename",
                                            mesh_filename_, mesh_filename_);
+
+  LOG(INFO) << "Meshing filename after: " << mesh_filename_;
+
+
+
+  std::string mesh_filename_1 = "not_initialized_";
+  LOG(INFO) << "Meshing filename_1 before: " << mesh_filename_1;
+  node_handle_private_->param<std::string>("meshing/mesh_filename_1",
+                                           mesh_filename_1, mesh_filename_1);
+
+  LOG(INFO) << "Meshing filename_1 after: " << mesh_filename_1;
+
+
+
+
 }
 
 Controller::~Controller() { viz_thread_.join(); }
@@ -334,7 +349,10 @@ void Controller::subscribeSegmentPointCloudTopic(
   // refactored to be received as one single message.
   // Large queue size to give slack to the
   // pipeline and not lose any messages.
-  constexpr int kSegmentPointCloudQueueSize = 6000;
+  int kSegmentPointCloudQueueSize = 60000;
+  node_handle_private_->param("segment_point_cloud_queue_size",
+                                           kSegmentPointCloudQueueSize,
+                                           kSegmentPointCloudQueueSize);
   *segment_point_cloud_sub = node_handle_private_->subscribe(
       segment_point_cloud_topic, kSegmentPointCloudQueueSize,
       &Controller::segmentPointCloudCallback, this);
@@ -424,6 +442,61 @@ void Controller::advertiseGetAlignedInstanceBoundingBoxService(
   *get_instance_bounding_box_srv = node_handle_private_->advertiseService(
       "get_aligned_instance_bbox",
       &Controller::getAlignedInstanceBoundingBoxCallback, this);
+}
+
+void Controller::saveMesh()
+{
+    bool clear_mesh = true;
+    this->generateMesh(clear_mesh);
+
+    Labels labels;
+    std::unordered_map<Label, LabelTsdfMap::LayerPair> label_to_layers;
+    {
+      std::lock_guard<std::mutex> label_tsdf_layers_lock(
+          label_tsdf_layers_mutex_);
+      // Get list of all labels in the map.
+      labels = map_->getLabelList();
+
+      // Extract the TSDF and label layers corresponding to each segment.
+      constexpr bool kLabelsListIsComplete = true;
+      map_->extractSegmentLayers(labels, &label_to_layers, kLabelsListIsComplete);
+    }
+
+
+    const char* kSegmentFolder = "gsm_segments";
+
+    struct stat info;
+    if (stat(kSegmentFolder, &info) != 0) {
+    CHECK_EQ(mkdir(kSegmentFolder, ACCESSPERMS), 0);
+    }
+
+    bool overall_success = true;
+    for (Label label : labels) {
+    auto it = label_to_layers.find(label);
+    CHECK(it != label_to_layers.end())
+        << "Layers for label " << label << " could not be extracted.";
+
+    const Layer<TsdfVoxel>& segment_tsdf_layer = it->second.first;
+    const Layer<LabelVoxel>& segment_label_layer = it->second.second;
+
+    CHECK_EQ(voxblox::file_utils::makePath("gsm_segments", 0777), 0);
+
+    std::string mesh_filename =
+        "gsm_segments/gsm_segment_mesh_label_" + std::to_string(label) + ".ply";
+
+    bool success = voxblox::io::outputLayerAsPly(
+        segment_tsdf_layer, mesh_filename,
+        voxblox::io::PlyOutputTypes::kSdfIsosurface);
+
+    if (success) {
+      LOG(INFO) << "Output segment file as PLY: " << mesh_filename.c_str();
+    } else {
+      LOG(INFO) << "Failed to output mesh as PLY:" << mesh_filename.c_str();
+    }
+    }
+
+//    return overall_success;
+
 }
 
 void Controller::processSegment(
@@ -585,6 +658,10 @@ void Controller::segmentPointCloudCallback(
   last_segment_msg_timestamp_ = segment_point_cloud_msg->header.stamp;
 
   processSegment(segment_point_cloud_msg);
+  if(ros::getGlobalCallbackQueue()->isEmpty())
+  {
+      LOG(ERROR) << "Segment point cloud callback: callback queue is empty";
+  }
 }
 
 void Controller::resetMeshIntegrators() {
@@ -915,7 +992,11 @@ bool Controller::lookupTransform(const std::string& from_frame,
   // publisher, etc).
   if (!tf_listener_.canTransform(to_frame, from_frame, time_to_lookup)) {
     time_to_lookup = ros::Time(0);
+    LOG(ERROR) << "Could not find transform between " << to_frame << " and " << from_frame;
+    LOG(ERROR) << "At time " << time_to_lookup;
     LOG(ERROR) << "Using latest TF transform instead of timestamp match.";
+    LOG(ERROR) << "Shutting down";
+    ros::shutdown();
     return false;
   }
 
