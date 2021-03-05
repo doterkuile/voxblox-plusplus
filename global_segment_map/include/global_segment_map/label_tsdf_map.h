@@ -23,6 +23,8 @@ class LabelTsdfMap {
   struct Config {
     FloatingPoint voxel_size = 0.2;
     size_t voxels_per_side = 16u;
+    int min_voxels_per_label = 0;
+    bool largest_labels_only = false;
   };
 
   explicit LabelTsdfMap(const Config& config)
@@ -63,7 +65,7 @@ class LabelTsdfMap {
   // Get the list of all labels
   // for which the voxel count is greater than 0.
   // NOT THREAD SAFE.
-  Labels getLabelList();
+  Labels getLabelList(const int min_voxels_per_label = 0);
 
   // Get the list of all instance labels
   // for which the voxel count is greater than 0.

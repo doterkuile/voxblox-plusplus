@@ -2,18 +2,61 @@
 
 namespace voxblox {
 
-Labels LabelTsdfMap::getLabelList() {
+Labels LabelTsdfMap::getLabelList(const int min_voxels_per_label) {
   Labels labels;
   int count_unused_labels = 0;
+
+
+  std::map<Label, int> labelMap;
+//  int ii = 0;
+//  int jj = 0;
+//  for(; ii < 25; ii++){
+//      std::pair<Label,int> new_pair = std::pair<Label,int>(jj,ii);
+//      if(labelMap.size() > 10)
+//      {
+//          // find key with lowest .second
+//          auto it = std::min_element(labelMap.begin(), labelMap.end(),
+//                      [](const auto& l, const auto& r) { return l.second < r.second; });
+//          labelMap.erase(it);
+//          // remove this key first
+//      }
+//      labelMap.insert(new_pair);
+//      jj = jj + 3;
+//  }
+
+  std::map<Label, int>::iterator it;
+  Labels::iterator label_it;
   for (const std::pair<Label, int>& label_count_pair : label_count_map_) {
-    if (label_count_pair.second > 0) {
-      labels.push_back(label_count_pair.first);
+    if (label_count_pair.second > min_voxels_per_label) {
+       if(labelMap.size() < 10)
+       {
+           labelMap.insert(label_count_pair);
+           labels.push_back(label_count_pair.first);
+       }
+       else
+       {
+
+
+           it = std::min_element(labelMap.begin(), labelMap.end(),
+                       [](const auto& l, const auto& r) { return l.second < r.second; });
+
+           if(it->second < label_count_pair.second)
+           {
+               labelMap.erase(it);
+               std::vector<Label>::iterator it_label = std::find(labels.begin(), labels.end(), it->first);
+               labels.erase(it_label);
+
+               labelMap.insert(label_count_pair);
+               labels.push_back(label_count_pair.first);
+           }
+       }
+
     } else {
       count_unused_labels++;
     }
   }
   LOG(INFO) << "number of lables: " << labels.size();
-  LOG(ERROR) << "Unused labels count: " << count_unused_labels;
+  LOG(ERROR) << "Unused labels count:    " << count_unused_labels;
   return labels;
 }
 
@@ -99,6 +142,13 @@ void LabelTsdfMap::extractSegmentLayers(
 
       if (global_label_voxel.label == 0u) {
         continue;
+      }
+
+
+      auto label_it = std::find(labels.begin(), labels.end(), global_label_voxel.label);
+      if (label_it == labels.end())
+      {
+          continue;
       }
 
       auto it = label_layers_map->find(global_label_voxel.label);
