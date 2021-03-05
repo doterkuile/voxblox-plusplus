@@ -1,7 +1,7 @@
 <launch>
   <arg name="play_bag" default="true" />
   <arg name="visualize" default="true" />
-  <arg name="iteration" default="1" />
+  <arg name="iteration" default="" />
   <arg name="object" default="test_1" />
 
 

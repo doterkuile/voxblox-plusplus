@@ -149,6 +149,13 @@ Controller::Controller(ros::NodeHandle* node_handle_private)
   node_handle_private_->param<std::string>("world_frame_id", world_frame_,
                                            world_frame_);
 
+
+  node_handle_private_->param<int>("voxblox/min_voxels_per_label", map_config_.min_voxels_per_label,
+                                   map_config_.min_voxels_per_label);
+
+  node_handle_private_->param<bool>("voxblox/get_largest_labels_only", map_config_.largest_labels_only,
+                                   map_config_.largest_labels_only);
+
   // Workaround for OS X on mac mini not having specializations for float
   // for some reason.
   int voxels_per_side = map_config_.voxels_per_side;
@@ -315,20 +322,9 @@ Controller::Controller(ros::NodeHandle* node_handle_private)
         ros::Duration(update_mesh_every_n_sec), &Controller::updateMeshEvent,
         this);
   }
-  LOG(INFO) << "Meshing filename before: " << mesh_filename_;
   node_handle_private_->param<std::string>("meshing/mesh_filename",
                                            mesh_filename_, mesh_filename_);
 
-  LOG(INFO) << "Meshing filename after: " << mesh_filename_;
-
-
-
-  std::string mesh_filename_1 = "not_initialized_";
-  LOG(INFO) << "Meshing filename_1 before: " << mesh_filename_1;
-  node_handle_private_->param<std::string>("meshing/mesh_filename_1",
-                                           mesh_filename_1, mesh_filename_1);
-
-  LOG(INFO) << "Meshing filename_1 after: " << mesh_filename_1;
 
 
 
@@ -472,27 +468,27 @@ void Controller::saveMesh()
 
     bool overall_success = true;
     for (Label label : labels) {
-    auto it = label_to_layers.find(label);
-    CHECK(it != label_to_layers.end())
-        << "Layers for label " << label << " could not be extracted.";
+        auto it = label_to_layers.find(label);
+        CHECK(it != label_to_layers.end())
+            << "Layers for label " << label << " could not be extracted.";
 
-    const Layer<TsdfVoxel>& segment_tsdf_layer = it->second.first;
-    const Layer<LabelVoxel>& segment_label_layer = it->second.second;
+        const Layer<TsdfVoxel>& segment_tsdf_layer = it->second.first;
+        const Layer<LabelVoxel>& segment_label_layer = it->second.second;
 
-    CHECK_EQ(voxblox::file_utils::makePath("gsm_segments", 0777), 0);
+        CHECK_EQ(voxblox::file_utils::makePath("gsm_segments", 0777), 0);
 
-    std::string mesh_filename =
-        "gsm_segments/gsm_segment_mesh_label_" + std::to_string(label) + ".ply";
+        std::string mesh_filename =
+            "gsm_segments/gsm_segment_mesh_label_" + std::to_string(label) + ".ply";
 
-    bool success = voxblox::io::outputLayerAsPly(
-        segment_tsdf_layer, mesh_filename,
-        voxblox::io::PlyOutputTypes::kSdfIsosurface);
+        bool success = voxblox::io::outputLayerAsPly(
+            segment_tsdf_layer, mesh_filename,
+            voxblox::io::PlyOutputTypes::kSdfIsosurface);
 
-    if (success) {
-      LOG(INFO) << "Output segment file as PLY: " << mesh_filename.c_str();
-    } else {
-      LOG(INFO) << "Failed to output mesh as PLY:" << mesh_filename.c_str();
-    }
+        if (success) {
+          LOG(INFO) << "Output segment file as PLY: " << mesh_filename.c_str();
+        } else {
+          LOG(INFO) << "Failed to output mesh as PLY:" << mesh_filename.c_str();
+        }
     }
 
 //    return overall_success;
@@ -790,12 +786,14 @@ bool Controller::getScenePointcloudCallback(
 bool Controller::saveSegmentsAsMeshCallback(
     std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
   Labels labels;
+  InstanceLabels instances;
   std::unordered_map<Label, LabelTsdfMap::LayerPair> label_to_layers;
   {
     std::lock_guard<std::mutex> label_tsdf_layers_lock(
         label_tsdf_layers_mutex_);
     // Get list of all labels in the map.
-    labels = map_->getLabelList();
+    labels = map_->getLabelList(map_config_.min_voxels_per_label);
+    instances = map_->getInstanceList();
 
     // Extract the TSDF and label layers corresponding to each segment.
     constexpr bool kLabelsListIsComplete = true;

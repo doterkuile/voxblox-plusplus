@@ -3,9 +3,7 @@ world_frame_id: "map"
 use_label_propagation: true
 
 voxblox:
-  voxel_size: 0.008
-  min_voxels_per_label: 40 
-  get_largest_labels_only: true
+  voxel_size: 0.002
   voxels_per_side: 16
   truncation_distance_factor: 5.0
   voxel_carving_enabled: true
@@ -28,7 +26,7 @@ semantic_instance_segmentation:
   class_tsdk: "coco80"
 
 publishers:
-  publish_scene_map: true
+  publish_scene_map: false
   publish_scene_mesh: true
   publish_object_bbox: false
 

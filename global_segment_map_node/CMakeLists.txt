@@ -50,5 +50,10 @@ cs_add_executable(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_library)
 
+cs_add_executable(segment_subscriber
+  src/debug_node.cpp
+)
+target_link_libraries(segment_subscriber ${PROJECT_NAME}_library)
+
 cs_install()
 cs_export()

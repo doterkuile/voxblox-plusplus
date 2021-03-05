@@ -5,6 +5,8 @@ use_label_propagation: true
 voxblox:
   voxel_size: 0.02
   voxels_per_side: 8
+  min_voxels_per_label: 40 
+  get_largest_labels_only: true
   truncation_distance_factor: 3.0
   voxel_carving_enabled: false
   min_ray_length_m: 0.1
